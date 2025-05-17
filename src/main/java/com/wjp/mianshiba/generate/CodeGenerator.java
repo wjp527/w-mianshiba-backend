@@ -30,9 +30,12 @@ public class CodeGenerator {
     public static void main(String[] args) throws TemplateException, IOException {
         // 指定生成参数
         String packageName = "com.wjp.mianshiba";
-        String dataName = "用户评论";
-        String dataKey = "userComment";
-        String upperDataKey = "UserComment";
+        // 表的描述
+        String dataName = "题目题库关联";
+        // 表名
+        String dataKey = "questionBankQuestion";
+        // 类名 大驼峰
+        String upperDataKey = "QuestionBankQuestion";
 
         // 封装生成参数
         Map<String, Object> dataModel = new HashMap<>();

@@ -66,9 +66,20 @@ public class User implements Serializable {
     private String userRole;
 
     /**
+     * 用户邮箱
+     */
+    private String userEmail;
+
+    /**
      * 创建时间
      */
     private Date createTime;
+
+
+    /**
+     * 更新时间
+     */
+    private Date editTime;
 
     /**
      * 更新时间
