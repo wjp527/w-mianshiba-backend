@@ -96,7 +96,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         Long notId = questionQueryRequest.getNotId();
         String searchText = questionQueryRequest.getSearchText();
         String title = questionQueryRequest.getTitle();
-        String description = questionQueryRequest.getDescription();
+        String content = questionQueryRequest.getContent();
         String picture = questionQueryRequest.getPicture();
         String answer = questionQueryRequest.getAnswer();
         Long userId = questionQueryRequest.getUserId();
@@ -118,7 +118,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         }
         // 模糊查询
         queryWrapper.like(StringUtils.isNotBlank(title), "title", title);
-        queryWrapper.like(StringUtils.isNotBlank(description), "description", description);
+        queryWrapper.like(StringUtils.isNotBlank(content), "content", content);
         queryWrapper.like(StringUtils.isNotBlank(answer), "answer", answer);
 
         // 精确查询

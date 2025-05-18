@@ -39,9 +39,9 @@ public class QuestionQueryRequest extends PageRequest implements Serializable {
     private String title;
 
     /**
-     * 描述
+     * 内容
      */
-    private String description;
+    private String content;
 
     /**
      * 图片

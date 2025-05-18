@@ -47,6 +47,16 @@ public class QuestionUpdateRequest implements Serializable {
     private Integer viewNum;
 
     /**
+     * 点赞数
+     */
+    private Integer thumbNum;
+
+    /**
+     * 收藏数
+     */
+    private Integer favourNum;
+
+    /**
      * 创建用户 id
      */
     private Long userId;
