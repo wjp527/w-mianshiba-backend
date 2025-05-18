@@ -3,6 +3,7 @@ package com.wjp.mianshiba.model.dto.questionBank;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -25,14 +26,40 @@ public class QuestionBankUpdateRequest implements Serializable {
     private String title;
 
     /**
-     * 内容
+     * 描述
      */
-    private String content;
+    private String description;
 
     /**
-     * 标签列表
+     * 图片
      */
-    private List<String> tags;
+    private String picture;
+
+    /**
+     * 浏览量
+     */
+    private Integer viewNum;
+
+    /**
+     * 状态：0-待审核, 1-通过, 2-拒绝
+     */
+    private Integer reviewStatus;
+
+    /**
+     * 审核信息
+     */
+    private String reviewMessage;
+
+    /**
+     * 审核人 id
+     */
+    private Long reviewerId;
+
+    /**
+     * 审核时间
+     */
+    private Date reviewTime;
+
 
     private static final long serialVersionUID = 1L;
 }
