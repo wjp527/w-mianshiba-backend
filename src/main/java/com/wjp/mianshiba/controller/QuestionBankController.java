@@ -18,6 +18,7 @@ import com.wjp.mianshiba.model.entity.Question;
 import com.wjp.mianshiba.model.entity.QuestionBank;
 import com.wjp.mianshiba.model.entity.User;
 import com.wjp.mianshiba.model.vo.QuestionBankVO;
+import com.wjp.mianshiba.model.vo.QuestionVO;
 import com.wjp.mianshiba.service.QuestionBankService;
 import com.wjp.mianshiba.service.QuestionService;
 import com.wjp.mianshiba.service.UserService;
@@ -154,8 +155,11 @@ public class QuestionBankController {
         if(needQueryQuestionList) {
             QuestionQueryRequest questionQueryRequest = new QuestionQueryRequest();
             questionQueryRequest.setQuestionBankId(id);
+            questionQueryRequest.setCurrent(questionBankQueryRequest.getCurrent());
+            questionQueryRequest.setPageSize(questionBankQueryRequest.getPageSize());
             Page<Question> questionPage = questionService.listQuestionByPage(questionQueryRequest);
-            questionBankVO.setQuestionPage(questionPage);
+            Page<QuestionVO> questionVOPage = questionService.getQuestionVOPage(questionPage, request);
+            questionBankVO.setQuestionPage(questionVOPage);
         }
 
         // 获取封装类
@@ -192,7 +196,7 @@ public class QuestionBankController {
         long current = questionBankQueryRequest.getCurrent();
         long size = questionBankQueryRequest.getPageSize();
         // 限制爬虫
-        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(size > 200, ErrorCode.PARAMS_ERROR);
         // 查询数据库
         Page<QuestionBank> questionBankPage = questionBankService.page(new Page<>(current, size),
                 questionBankService.getQueryWrapper(questionBankQueryRequest));

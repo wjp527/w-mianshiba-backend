@@ -68,6 +68,21 @@ public class QuestionVO implements Serializable {
      */
     private Boolean hasFavour;
 
+    /**
+     * 浏览量
+     */
+    private Integer viewNum;
+
+    /**
+     * 点赞数
+     */
+    private Integer thumbNum;
+
+    /**
+     * 收藏数
+     */
+    private Integer favourNum;
+
 
     /**
      * 创建用户信息

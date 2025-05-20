@@ -105,9 +105,15 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         Integer reviewStatus = questionQueryRequest.getReviewStatus();
         String sortField = questionQueryRequest.getSortField();
         String sortOrder = questionQueryRequest.getSortOrder();
+        List<String> tagList = questionQueryRequest.getTagList();
 
 
-
+        // JSON 数组查询
+        if (CollUtil.isNotEmpty(tagList)) {
+            for (String tag : tagList) {
+                queryWrapper.like("tags", "\"" + tag + "\"");
+            }
+        }
 
 
         // todo 补充需要的查询条件
@@ -269,6 +275,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                         .collect(Collectors.toSet());
                 // 添加查询条件：题目 id 在 questionIdSet 集合中
                 queryWrapper.in("id", questionIdSet);
+            } else {
+                // 如果没有关联的题目，则返回空列表
+                return new Page<>();
             }
         }
         // 查询数据库

@@ -28,7 +28,12 @@ public class QuestionUpdateRequest implements Serializable {
     /**
      * 描述
      */
-    private String description;
+    private String content;
+
+    /**
+     * 答案
+     */
+    private String answer;
 
     /**
      * 图片

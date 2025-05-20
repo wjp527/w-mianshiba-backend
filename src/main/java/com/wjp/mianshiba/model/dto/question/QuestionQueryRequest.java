@@ -54,6 +54,11 @@ public class QuestionQueryRequest extends PageRequest implements Serializable {
     private String answer;
 
     /**
+     * 标签
+     */
+    private List<String> tagList;
+
+    /**
      * 创建用户 id
      */
     private Long userId;
