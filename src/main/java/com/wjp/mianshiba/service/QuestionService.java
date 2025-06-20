@@ -3,11 +3,13 @@ package com.wjp.mianshiba.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.wjp.mianshiba.model.dto.question.QuestionBatchDeleteRequest;
 import com.wjp.mianshiba.model.dto.question.QuestionQueryRequest;
 import com.wjp.mianshiba.model.entity.Question;
 import com.wjp.mianshiba.model.vo.QuestionVO;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
  * 题目服务
@@ -57,4 +59,10 @@ public interface QuestionService extends IService<Question> {
      * @return
      */
     public Page<Question> listQuestionByPage(QuestionQueryRequest questionQueryRequest);
+
+    /**
+     * 批量删除题目
+     * @param questionBatchDeleteRequest
+     */
+    void batchRemoveQuestions(List<Long> questionBatchDeleteRequest);
 }

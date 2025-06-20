@@ -14,7 +14,6 @@ import com.wjp.mianshiba.model.dto.question.QuestionQueryRequest;
 import com.wjp.mianshiba.model.entity.Question;
 import com.wjp.mianshiba.model.entity.QuestionBankQuestion;
 import com.wjp.mianshiba.model.entity.User;
-import com.wjp.mianshiba.model.enums.ReviewStatusEnum;
 import com.wjp.mianshiba.model.vo.QuestionVO;
 import com.wjp.mianshiba.model.vo.UserVO;
 import com.wjp.mianshiba.service.QuestionBankQuestionService;
@@ -26,6 +25,7 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
@@ -283,6 +283,40 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         // 查询数据库
         Page<Question> questionPage = this.page(new Page<>(current, size), queryWrapper);
         return questionPage;
+    }
+
+    /**
+     * 批量删除题目
+     * @param questionIdList
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void batchRemoveQuestions(List<Long> questionIdList) {
+        // 参数校验
+        ThrowUtils.throwIf(questionIdList == null , ErrorCode.PARAMS_ERROR);
+
+
+        // 获取题目列表
+        List<Question> questionList = this.listByIds(questionIdList);
+        // 获取到合法的题目id列表
+        List<Long> questionIdsList = questionList.stream()
+                .map(Question::getId)
+                .collect(Collectors.toList());
+
+        // 操作数据库
+        for (Long questionId : questionIdsList) {
+            boolean result = this.removeById(questionId);
+            ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+
+            // 移除题目题库关联
+            // 构造查询
+            LambdaQueryWrapper<QuestionBankQuestion> lambdaQueryWrapper = Wrappers.lambdaQuery(QuestionBankQuestion.class)
+                    .eq(QuestionBankQuestion::getQuestionId, questionId);
+            // 数据库操作失败了，会进行回退的一个操作
+            result = questionBankQuestionService.remove(lambdaQueryWrapper);
+            ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "删除题目题库关联");
+        }
+
     }
 
 }

@@ -35,6 +35,13 @@
             <groupId>org.mybatis.spring.boot</groupId>
             <artifactId>mybatis-spring-boot-starter</artifactId>
             <version>2.2.2</version>
+            <exclusions>
+                <!-- Druid注意点: 排除默认的 HikariCP -->
+                <exclusion>
+                    <groupId>com.zaxxer</groupId>
+                    <artifactId>HikariCP</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- https://mvnrepository.com/artifact/com.baomidou/mybatis-plus-boot-starter -->
         <dependency>
@@ -42,6 +49,14 @@
             <artifactId>mybatis-plus-boot-starter</artifactId>
             <version>3.5.2</version>
         </dependency>
+
+        <!-- Druid https://github.com/alibaba/druid/wiki/%E9%A6%96%E9%A1%B5 -->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>druid-spring-boot-starter</artifactId>
+            <version>1.2.23</version>
+        </dependency>
+
         <!-- redis -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -55,7 +70,6 @@
             <artifactId>redisson</artifactId>
             <version>3.21.0</version>
         </dependency>
-
 
         <dependency>
             <groupId>org.springframework.session</groupId>

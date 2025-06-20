@@ -11,10 +11,7 @@ import com.wjp.mianshiba.common.ResultUtils;
 import com.wjp.mianshiba.constant.UserConstant;
 import com.wjp.mianshiba.exception.BusinessException;
 import com.wjp.mianshiba.exception.ThrowUtils;
-import com.wjp.mianshiba.model.dto.question.QuestionAddRequest;
-import com.wjp.mianshiba.model.dto.question.QuestionEditRequest;
-import com.wjp.mianshiba.model.dto.question.QuestionQueryRequest;
-import com.wjp.mianshiba.model.dto.question.QuestionUpdateRequest;
+import com.wjp.mianshiba.model.dto.question.*;
 import com.wjp.mianshiba.model.entity.Question;
 import com.wjp.mianshiba.model.entity.User;
 import com.wjp.mianshiba.model.vo.QuestionVO;
@@ -252,4 +249,31 @@ public class QuestionController {
     }
 
     // endregion
+
+    /**
+     * 删除题目
+     *
+     * @param questionBatchDeleteRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/delete/batch")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> batchRemoveQuestions(@RequestBody QuestionBatchDeleteRequest questionBatchDeleteRequest, HttpServletRequest request) {
+        if (questionBatchDeleteRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        List<Long> questionIdList = questionBatchDeleteRequest.getQuestionIdList();
+
+        User user = userService.getLoginUser(request);
+
+        // 仅本人或管理员可删除
+        if (!userService.isAdmin(request)) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
+        // 操作数据库
+         questionService.batchRemoveQuestions(questionIdList);
+        return ResultUtils.success(true);
+    }
+
 }
