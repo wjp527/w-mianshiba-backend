@@ -3,6 +3,7 @@ package com.wjp.mianshiba.controller;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.jd.platform.hotkey.client.callback.JdHotKeyStore;
 import com.wjp.mianshiba.annotation.AuthCheck;
 import com.wjp.mianshiba.common.BaseResponse;
 import com.wjp.mianshiba.common.DeleteRequest;
@@ -144,9 +145,19 @@ public class QuestionController {
     @GetMapping("/get/vo")
     public BaseResponse<QuestionVO> getQuestionVOById(long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
+        String key = "question_detail_" + id;
+        if(JdHotKeyStore.isHotKey(key)) {
+            Object cacheQuestion = JdHotKeyStore.get(key);
+            if (cacheQuestion != null) {
+                return ResultUtils.success((QuestionVO) cacheQuestion);
+            }
+        }
         // 查询数据库
         Question question = questionService.getById(id);
         ThrowUtils.throwIf(question == null, ErrorCode.NOT_FOUND_ERROR);
+
+        // 设置缓存
+        JdHotKeyStore.smartSet(key, questionService.getQuestionVO(question, request));
         // 获取封装类
         return ResultUtils.success(questionService.getQuestionVO(question, request));
     }

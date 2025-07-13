@@ -1,11 +1,13 @@
 package com.wjp.mianshiba.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.jd.platform.hotkey.client.callback.JdHotKeyStore;
 import com.wjp.mianshiba.annotation.AuthCheck;
 import com.wjp.mianshiba.common.BaseResponse;
 import com.wjp.mianshiba.common.DeleteRequest;
 import com.wjp.mianshiba.common.ErrorCode;
 import com.wjp.mianshiba.common.ResultUtils;
+import com.wjp.mianshiba.config.HotKeyConfig;
 import com.wjp.mianshiba.constant.UserConstant;
 import com.wjp.mianshiba.exception.BusinessException;
 import com.wjp.mianshiba.exception.ThrowUtils;
@@ -48,6 +50,7 @@ public class QuestionBankController {
 
     @Resource
     private UserService userService;
+
 
     // region 增删改查
 
@@ -144,6 +147,20 @@ public class QuestionBankController {
         ThrowUtils.throwIf(questionBankQueryRequest == null, ErrorCode.PARAMS_ERROR);
         Long id = questionBankQueryRequest.getId();
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
+
+        // 是否有热key
+        String key = "bank_detail_" + id;
+        // 如果是热key
+        if(JdHotKeyStore.isHotKey(key)) {
+            // 根据热key获取缓存值
+            Object cacheQuestionBankVO = JdHotKeyStore.get(key);
+            // 判断热key是否有值
+            if(cacheQuestionBankVO != null) {
+                // 如果缓存有值，直接返回
+                return ResultUtils.success((QuestionBankVO) cacheQuestionBankVO);
+            }
+        }
+
         // 查询数据库
         QuestionBank questionBank = questionBankService.getById(id);
         ThrowUtils.throwIf(questionBank == null, ErrorCode.NOT_FOUND_ERROR);
@@ -162,6 +179,8 @@ public class QuestionBankController {
             questionBankVO.setQuestionPage(questionVOPage);
         }
 
+        // 设置缓存（只在热key的时候设置缓存值）
+        JdHotKeyStore.smartSet(key, questionBankVO);
         // 获取封装类
         return ResultUtils.success(questionBankVO);
     }

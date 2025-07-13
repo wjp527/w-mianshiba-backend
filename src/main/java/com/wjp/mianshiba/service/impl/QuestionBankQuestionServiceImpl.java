@@ -42,6 +42,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 题目题库关联服务实现
@@ -211,7 +212,6 @@ public class QuestionBankQuestionServiceImpl extends ServiceImpl<QuestionBankQue
      * @return
      */
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public void batchAddQuestionsToBank(List<Long> questionIdList, long questionBankId, User loginUser) {
         // 参数校验
         if (CollUtil.isEmpty(questionIdList) || questionBankId <= 0) {
@@ -223,22 +223,30 @@ public class QuestionBankQuestionServiceImpl extends ServiceImpl<QuestionBankQue
 
         // 判断题目是否存在
         // 减少 select * from question
-        LambdaQueryWrapper<Question> questionLambdaQueryWrapper = Wrappers.lambdaQuery(Question.class)
-                .select(Question::getId)
-                .in(Question::getId, questionIdList);
+        LambdaQueryWrapper<Question> questionLambdaQueryWrapper = Wrappers.lambdaQuery(Question.class)  // 初始化，指定实体类型为 Question
+                .select(Question::getId)  // 指定查询字段：仅返回 id 列
+                .in(Question::getId, questionIdList); // 条件：id 在 questionIdList 集合中
 
         // 合法的题目 id 列表
+        // listObjs: 高效查询单列数据 仅返回查询结果的第一列数据，因此 obj 的值就是每条记录中 id 字段的值
+        // (obj) -> (Long) obj 负责将数据库返回的 Object 类型强制转换为 Long 类型（假设 id 字段在数据库中是 BIGINT 等整型）。
+        // 转换后得到 List<Long> validQuestionIdList，即符合条件的 id 列表。
         List<Long> validQuestionIdList = questionService.listObjs(questionLambdaQueryWrapper, (obj) -> (Long) obj);
+        ThrowUtils.throwIf(CollUtil.isEmpty(validQuestionIdList), ErrorCode.PARAMS_ERROR);
 
-
-        // 检查哪些题目还不存在于题库中，避免重复插入
+        // 检查那些题目不存在与题库，避免重复插入
         LambdaQueryWrapper<QuestionBankQuestion> lambdaQueryWrapper = Wrappers.lambdaQuery(QuestionBankQuestion.class)
                 .eq(QuestionBankQuestion::getQuestionBankId, questionBankId)
-                .notIn(QuestionBankQuestion::getQuestionId, validQuestionIdList);
-        List<QuestionBankQuestion> notExistQuestionList = this.list(lambdaQueryWrapper);
-        validQuestionIdList = notExistQuestionList.stream()
-                .map(QuestionBankQuestion::getId)
-                .collect(Collectors.toList());
+                .in(QuestionBankQuestion::getQuestionId, questionIdList);
+
+        List<QuestionBankQuestion> existQuestionList = this.list(lambdaQueryWrapper);
+
+        // 已存在与题库中的题目id
+        Set<Long> existQuestionIdSet = existQuestionList.stream().map(QuestionBankQuestion::getQuestionId)
+                .collect(Collectors.toSet());
+
+        // 已存在与题库中的题目id，不要重复添加
+        validQuestionIdList = validQuestionIdList.stream().filter(questionId -> !existQuestionIdSet.contains(questionId)).collect(Collectors.toList());
 
         ThrowUtils.throwIf(CollUtil.isEmpty(validQuestionIdList), ErrorCode.PARAMS_ERROR, "所有题目均已上传到该题库中");
 
@@ -260,9 +268,9 @@ public class QuestionBankQuestionServiceImpl extends ServiceImpl<QuestionBankQue
         List<CompletableFuture<Void>> futures = new ArrayList<>();
 
         // 分批次处理，避免长事务，假设每次处理1000条数据
-        int batchSize = 1000;
+        int batchSize = 1;
         int totalQuestionListSize = validQuestionIdList.size();
-        for (int i = 0; i < totalQuestionListSize; i++) {
+        for (int i = 0; i < totalQuestionListSize; i+=batchSize) {
             // 生成每批次的数据
             List<Long> subList = validQuestionIdList.subList(i, Math.min(i + batchSize, totalQuestionListSize));
             List<QuestionBankQuestion> questionBankQuestions = subList.stream().map(
@@ -274,12 +282,16 @@ public class QuestionBankQuestionServiceImpl extends ServiceImpl<QuestionBankQue
                         return questionBankQuestion;
                     }
             ).collect(Collectors.toList());
-            // 使用事务处理每批数据
             // 获取代理
             QuestionBankQuestionService questionBankQuestionService = (QuestionBankQuestionService) AopContext.currentProxy();
-            CompletableFuture.runAsync(() -> {
-                    batchAddQuestionsToBankInner(questionBankQuestions);
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                // 使用事务处理每批数据
+                // 如果想要在当前的Service中 使用 打了@Transational事务的注解的Service，那么必须使用代理对象来调用方法
+                // Error: this.batchAddQuestionsToBankInner(questionBankQuestions);
+//                batchAddQuestionsToBankInner(questionBankQuestions);
+                questionBankQuestionService.batchAddQuestionsToBankInner(questionBankQuestions);
             }, customExecutor);
+            futures.add(future);
 
             // 阻塞 等待所有任务完成,在往后面执行
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
@@ -294,30 +306,26 @@ public class QuestionBankQuestionServiceImpl extends ServiceImpl<QuestionBankQue
      *
      * @param questionBankQuestions
      */
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void batchAddQuestionsToBankInner(List<QuestionBankQuestion> questionBankQuestions) {
-        for (QuestionBankQuestion questionBankQuestion : questionBankQuestions) {
-            Long questionBankId = questionBankQuestion.getQuestionBankId();
-            Long questionId = questionBankQuestion.getQuestionId();
-
-            try {
-                // saveBatch 是 MyBatis-Plus 提供的方法，用于批量插入数据到数据库。
-                // 它会将传入的实体列表一次性插入数据库，相比单条插入效率更高。
-                // 注意：使用时需确保数据量不过大以避免内存问题，且通常需要在事务中执行。
-                boolean result = this.saveBatch(questionBankQuestions);
-                ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "向题库添加题目失败");
-                ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "向题库添加题目失败");
-            } catch (DataIntegrityViolationException e) {
-                log.error("数据库唯一键冲突违反其他完整性约束，题目id: {}, 题库id: {},错误信息: {}", questionId, questionBankId, e.getMessage());
-                throw new BusinessException(ErrorCode.OPERATION_ERROR, "题目已存在该题库，无法重复添加");
-            } catch (DataAccessException e) {
-                log.error("数据库链接问题、事务问题等导致操作失败,题目 id: {}, 题库id: {}, 错误信息: {}", questionId, questionBankId, e.getMessage());
-                throw new BusinessException(ErrorCode.OPERATION_ERROR, "数据库链接问题、事务问题等导致操作失败");
-            } catch (Exception e) {
-                // 捕获其他异常，做通用处理
-                log.error("添加题目到题库发生未知错误，题目id: {}, 题库id: {}, 错误信息: {}", questionId, questionBankId, e.getMessage());
-                throw new BusinessException(ErrorCode.OPERATION_ERROR, "想题库添加题目失败");
-            }
+        try {
+            // saveBatch 是 MyBatis-Plus 提供的方法，用于批量插入数据到数据库。
+            // 它会将传入的实体列表一次性插入数据库，相比单条插入效率更高。
+            // 注意：使用时需确保数据量不过大以避免内存问题，且通常需要在事务中执行。
+            boolean result = this.saveBatch(questionBankQuestions);
+            ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "向题库添加题目失败");
+            ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "向题库添加题目失败");
+        } catch (DataIntegrityViolationException e) {
+            log.error("数据库唯一键冲突违反其他完整性约束,错误信息: {}",  e.getMessage());
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "题目已存在该题库，无法重复添加");
+        } catch (DataAccessException e) {
+            log.error("数据库链接问题、事务问题等导致操作失败, 错误信息: {}",  e.getMessage());
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "数据库链接问题、事务问题等导致操作失败");
+        } catch (Exception e) {
+            // 捕获其他异常，做通用处理
+            log.error("添加题目到题库发生未知错误, 错误信息: {}", e.getMessage());
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "想题库添加题目失败");
         }
 
     }
