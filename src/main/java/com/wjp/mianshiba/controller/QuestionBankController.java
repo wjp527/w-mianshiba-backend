@@ -1,5 +1,8 @@
 package com.wjp.mianshiba.controller;
 
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
+import com.alibaba.csp.sentinel.slots.block.degrade.DegradeException;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jd.platform.hotkey.client.callback.JdHotKeyStore;
 import com.wjp.mianshiba.annotation.AuthCheck;
@@ -210,6 +213,12 @@ public class QuestionBankController {
      * @return
      */
     @PostMapping("/list/page/vo")
+    // 定义资源名称
+    @SentinelResource(value = "listQuestionBankVOByPage",
+    // 限流异常【阻塞操作】
+    blockHandler = "handleBlockException",
+    // 熔断异常【降级操作】
+    fallback = "handleFallback")
     public BaseResponse<Page<QuestionBankVO>> listQuestionBankVOByPage(@RequestBody QuestionBankQueryRequest questionBankQueryRequest,
                                                                HttpServletRequest request) {
         long current = questionBankQueryRequest.getCurrent();
@@ -221,6 +230,40 @@ public class QuestionBankController {
                 questionBankService.getQueryWrapper(questionBankQueryRequest));
         // 获取封装类
         return ResultUtils.success(questionBankService.getQuestionBankVOPage(questionBankPage, request));
+    }
+
+    /**
+     * handleBlockException 流控操作
+     * 限流，提示“系统压力过大，请耐心等待”
+     * @param questionBankQueryRequest
+     * @param request
+     * @param ex
+     * @return
+     */
+    public BaseResponse<Page<QuestionBankVO>> handleBlockException(@RequestBody QuestionBankQueryRequest questionBankQueryRequest,
+                                                                   HttpServletRequest request, BlockException ex) {
+
+        // 如果是 降级异常
+        if(ex instanceof DegradeException) {
+            // 执行 降级操作
+            return handleFallback(questionBankQueryRequest, request, ex);
+        }
+
+        // 限流操作
+        return ResultUtils.error(ErrorCode.SYSTEM_ERROR, "系统压力过大，请耐心等待");
+    }
+
+    /**
+     * handleFallback： 降级操作：直接返回本地数据
+     * @param questionBankQueryRequest
+     * @param request
+     * @param ex
+     * @return
+     */
+    public BaseResponse<Page<QuestionBankVO>> handleFallback(@RequestBody QuestionBankQueryRequest questionBankQueryRequest,
+                                                                   HttpServletRequest request, Throwable ex) {
+        // 限流操作
+        return ResultUtils.success(null);
     }
 
     /**
