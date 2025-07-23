@@ -2,6 +2,7 @@ package com.wjp.mianshiba.service.impl;
 
 import static com.wjp.mianshiba.constant.UserConstant.USER_LOGIN_STATE;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -15,6 +16,7 @@ import com.wjp.mianshiba.model.entity.User;
 import com.wjp.mianshiba.model.enums.UserRoleEnum;
 import com.wjp.mianshiba.model.vo.LoginUserVO;
 import com.wjp.mianshiba.model.vo.UserVO;
+import com.wjp.mianshiba.satoken.DeviceUtils;
 import com.wjp.mianshiba.service.UserService;
 import com.wjp.mianshiba.utils.SqlUtils;
 
@@ -115,7 +117,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户不存在或密码错误");
         }
         // 3. 记录用户的登录态
-        request.getSession().setAttribute(USER_LOGIN_STATE, user);
+        // 使用 sevlet 保存登录信息
+//        request.getSession().setAttribute(USER_LOGIN_STATE, user);
+        // Sa-Token 登录
+        // 记录了谁登录了
+        // 参数1: 登录的用户id
+        // 参数2: 指定设备，同端登录互斥
+        StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
+        // 使用Sa-Token登录，保存登录态
+        StpUtil.getSession().set(USER_LOGIN_STATE, user);
         return this.getLoginUserVO(user);
     }
 
@@ -159,15 +169,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     @Override
     public User getLoginUser(HttpServletRequest request) {
-        // 先判断是否已登录
-        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
-        User currentUser = (User) userObj;
-        if (currentUser == null || currentUser.getId() == null) {
-            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
-        }
-        // 从数据库查询（追求性能的话可以注释，直接走缓存）
-        long userId = currentUser.getId();
-        currentUser = this.getById(userId);
+//        Sa-Token
+        Object loginUserId = StpUtil.getLoginIdDefaultNull();
+
+//        普通
+//        // 先判断是否已登录
+//        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
+//        User currentUser = (User) userObj;
+//        if (currentUser == null || currentUser.getId() == null) {
+//            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
+//        }
+//        // 从数据库查询（追求性能的话可以注释，直接走缓存）
+//        long userId = currentUser.getId();
+
+
+        User currentUser = this.getById((String)loginUserId);
         if (currentUser == null) {
             throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
         }
@@ -219,11 +235,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     @Override
     public boolean userLogout(HttpServletRequest request) {
-        if (request.getSession().getAttribute(USER_LOGIN_STATE) == null) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "未登录");
-        }
-        // 移除登录态
-        request.getSession().removeAttribute(USER_LOGIN_STATE);
+        // 判断用户登录状态
+        StpUtil.checkLogin();
+        // Sa-Token 移除登录态
+        StpUtil.logout();
+//        if (request.getSession().getAttribute(USER_LOGIN_STATE) == null) {
+//            throw new BusinessException(ErrorCode.OPERATION_ERROR, "未登录");
+//        }
+//        // 移除登录态 severlet
+//        request.getSession().removeAttribute(USER_LOGIN_STATE);
+
         return true;
     }
 

@@ -40,10 +40,10 @@
             <version>2.2.2</version>
             <exclusions>
                 <!-- Druid注意点: 排除默认的 HikariCP -->
-                <exclusion>
-                    <groupId>com.zaxxer</groupId>
-                    <artifactId>HikariCP</artifactId>
-                </exclusion>
+<!--                <exclusion>-->
+<!--                    <groupId>com.zaxxer</groupId>-->
+<!--                    <artifactId>HikariCP</artifactId>-->
+<!--                </exclusion>-->
             </exclusions>
         </dependency>
 
@@ -55,11 +55,11 @@
         </dependency>
 
         <!-- Druid https://github.com/alibaba/druid/wiki/%E9%A6%96%E9%A1%B5 -->
-        <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>druid-spring-boot-starter</artifactId>
-            <version>1.2.24</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.alibaba</groupId>-->
+<!--            <artifactId>druid-spring-boot-starter</artifactId>-->
+<!--            <version>1.2.24</version>-->
+<!--        </dependency>-->
 
 
         <!-- redis -->
@@ -82,10 +82,36 @@
             <version>3.21.0</version>
         </dependency>
 
+        <!-- Sa-Token 权限认证，在线文档：https://sa-token.cc -->
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-spring-boot-starter</artifactId>
+<!--            <version>1.44.0</version>-->
+            <version>1.39.0</version>
+        </dependency>
+
+
         <dependency>
             <groupId>org.springframework.session</groupId>
             <artifactId>spring-session-data-redis</artifactId>
         </dependency>
+
+
+        <!-- Sa-Token 整合 Redis （使用 jdk 默认序列化方式） -->
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-redis</artifactId>
+            <version>1.39.0</version>
+        </dependency>
+
+
+        <!-- 提供Redis连接池 -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+        </dependency>
+
+
         <!-- elasticsearch-->
         <dependency>
             <groupId>org.springframework.boot</groupId>
