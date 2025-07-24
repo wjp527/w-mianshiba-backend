@@ -171,7 +171,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public User getLoginUser(HttpServletRequest request) {
 //        Sa-Token
         Object loginUserId = StpUtil.getLoginIdDefaultNull();
-
+        if (loginUserId == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
+        }
 //        普通
 //        // 先判断是否已登录
 //        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
@@ -218,7 +220,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public boolean isAdmin(HttpServletRequest request) {
         // 仅管理员可查询
-        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
+        Object userObj = StpUtil.getSession().get(USER_LOGIN_STATE);
+        // Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
         User user = (User) userObj;
         return isAdmin(user);
     }

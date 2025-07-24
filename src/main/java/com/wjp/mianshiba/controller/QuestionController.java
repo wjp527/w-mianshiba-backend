@@ -1,6 +1,7 @@
 package com.wjp.mianshiba.controller;
 
 import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.json.JSONUtil;
 import com.alibaba.csp.sentinel.Entry;
@@ -19,6 +20,7 @@ import com.wjp.mianshiba.common.ResultUtils;
 import com.wjp.mianshiba.constant.UserConstant;
 import com.wjp.mianshiba.exception.BusinessException;
 import com.wjp.mianshiba.exception.ThrowUtils;
+import com.wjp.mianshiba.manager.CounterManager;
 import com.wjp.mianshiba.model.dto.question.*;
 import com.wjp.mianshiba.model.dto.questionBank.QuestionBankQueryRequest;
 import com.wjp.mianshiba.model.entity.Question;
@@ -36,6 +38,7 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 题目接口
@@ -155,6 +158,11 @@ public class QuestionController {
     @GetMapping("/get/vo")
     public BaseResponse<QuestionVO> getQuestionVOById(long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
+
+        // 检测和处置爬虫
+        User loginUser = userService.getLoginUser(request);
+        crawlerDetect(loginUser.getId());
+
         String key = "question_detail_" + id;
         if(JdHotKeyStore.isHotKey(key)) {
             Object cacheQuestion = JdHotKeyStore.get(key);
@@ -170,6 +178,43 @@ public class QuestionController {
         JdHotKeyStore.smartSet(key, questionService.getQuestionVO(question, request));
         // 获取封装类
         return ResultUtils.success(questionService.getQuestionVO(question, request));
+    }
+
+    @Resource
+    private CounterManager counterManager;
+
+    /**
+     * 检测爬虫
+     * @param loginUserId 登录用户id
+     */
+    private void crawlerDetect(long loginUserId) {
+        // 调用多少次时 预警
+        final int WARN_COUNT = 10;
+        // 调用多少次时 封号
+        final int BAN_COUNT = 20;
+        // 拼接访问 key
+        String key = String.format("user:access:%s", loginUserId);
+        // 一分钟内访问次数，180秒后过期
+        long count = counterManager.incrAndGetCounter(key, 60, TimeUnit.MINUTES, 180);
+        // 是否封号
+        if(count >= BAN_COUNT) {
+            // 踢下线
+            StpUtil.kickout(loginUserId);
+            // 封号
+            User user = new User();
+            user.setId(loginUserId);
+            user.setUserRole("ban");
+            // 更新
+            boolean res = userService.updateById(user);
+            if(!res) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新用户状态失败");
+            }
+            throw new BusinessException(ErrorCode.FORBIDDEN_ERROR, "您的账号已被封号");
+        }
+        // 是否告警
+        if(count == WARN_COUNT) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "您的账号存在恶意访问，请勿频发访问");
+        }
     }
 
     /**
